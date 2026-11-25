@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Clay Blocks</title>
+  <meta name="description" content="A very simple, gentle 3D tool for 3D printing. Stack shapes, then sculpt them like clay." />
+  <meta name="theme-color" content="#1d4ed8" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js",
+      "three-mesh-bvh": "./vendor/three-mesh-bvh.module.js",
+      "three-bvh-csg": "./vendor/three-bvh-csg.module.js",
+      "fflate": "./vendor/fflate.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+<div id="app">
+
+  <header id="topbar">
+    <span class="brand"><span class="logo" aria-hidden="true">🧱</span> Clay Blocks</span>
+    <span class="spacer"></span>
+    <button id="btn-help" class="minibtn" data-speak="Help">📖 Help</button>
+    <button id="btn-settings" class="minibtn" data-speak="Settings">⚙️ Settings</button>
+  </header>
+
+  <div id="banner" role="status" aria-live="polite">Welcome! Press Shapes to begin.</div>
+
+  <main id="stage">
+    <div id="canvas-wrap">
+      <canvas id="view"></canvas>
+    </div>
+
+    <aside id="panel" aria-label="Tool options">
+      <!-- SHAPES -->
+      <section class="panel-page active" id="page-shapes">
+        <h2>Pick a shape</h2>
+        <div class="shape-grid">
+          <button data-shape="box" data-speak="Box"><span class="ico" aria-hidden="true">🧊</span> Box</button>
+          <button data-shape="cylinder" data-speak="Cylinder"><span class="ico" aria-hidden="true">🥫</span> Cylinder</button>
+          <button data-shape="sphere" data-speak="Ball"><span class="ico" aria-hidden="true">⚪</span> Ball</button>
+          <button data-shape="cone" data-speak="Cone"><span class="ico" aria-hidden="true">🍦</span> Cone</button>
+          <button data-shape="wedge" data-speak="Ramp"><span class="ico" aria-hidden="true">📐</span> Ramp</button>
+        </div>
+        <p class="hint">Tap a shape. It drops onto the plate.</p>
+        <div id="selected-card"></div>
+      </section>
+
+      <!-- MOVE -->
+      <section class="panel-page" id="page-move">
+        <h2>Move things</h2>
+        <p>Drag a shape to move it. Drop it on another shape to stack it.</p>
+        <div id="selected-card-move"></div>
+      </section>
+
+      <!-- SCULPT -->
+      <section class="panel-page" id="page-sculpt">
+        <h2>Sculpt the clay</h2>
+        <div id="sculpt-locked" class="card">
+          <p>First press <strong>Shapes</strong>, build something, then press <strong>Make it clay</strong>.</p>
+        </div>
+        <div id="sculpt-tools" style="display:none">
+          <p>Pick a brush, then drag on your model.</p>
+          <div class="pill-row" role="group" aria-label="Brush">
+            <button class="pill" data-brush="pull" data-speak="Pull" aria-pressed="true">👐 Pull</button>
+            <button class="pill" data-brush="push" data-speak="Push">👇 Push</button>
+            <button class="pill" data-brush="smooth" data-speak="Smooth">🫧 Smooth</button>
+          </div>
+          <div class="row">
+            <label for="brush-size">Size</label>
+            <input type="range" id="brush-size" min="10" max="100" value="30" data-speak="Brush size" />
+          </div>
+        </div>
+      </section>
+
+      <!-- HELP -->
+      <section class="panel-page" id="page-help">
+        <h2>Help cards</h2>
+        <div class="row">
+          <input type="search" id="help-search" placeholder="Ask a question, like: how do I make a hole?" data-speak="Search help" />
+        </div>
+        <div id="help-body"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="panel-page" id="page-settings">
+        <h2>Settings</h2>
+        <div class="card">
+          <div class="row">
+            <label for="set-voice">Voice</label>
+            <button id="set-voice" class="pill" aria-pressed="true" data-speak="Voice on or off">🔊 Voice is ON</button>
+          </div>
+          <div class="row">
+            <label for="set-rate">Speed</label>
+            <input type="range" id="set-rate" min="0.6" max="1.4" step="0.1" value="1" data-speak="Voice speed" />
+          </div>
+          <p class="hint" id="voice-note"></p>
+        </div>
+        <div class="card">
+          <div class="row">
+            <label for="set-font">Reading font</label>
+            <button id="set-font" class="pill" aria-pressed="false" data-speak="Reading font on or off">🔤 Normal font</button>
+          </div>
+          <div class="row">
+            <label for="set-contrast">Contrast</label>
+            <button id="set-contrast" class="pill" aria-pressed="false" data-speak="High contrast on or off">◑ Normal contrast</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Templates to start from</h3>
+          <div class="help-list">
+            <button data-template="grip" data-speak="Jar opener grip">🫙 Jar-opener grip</button>
+            <button data-template="spoon" data-speak="Big spoon handle">🥄 Big spoon handle</button>
+            <button data-template="bowl" data-speak="Pet bowl stand">🐾 Pet bowl stand</button>
+            <button data-template="ramp" data-speak="Small ramp">🛝 Small ramp</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Import a 3D scan</h3>
+          <label class="file-pick" for="import-file" data-speak="Choose a scan file">📄 Choose a file
+            <input type="file" id="import-file" accept=".stl,.obj" />
+          </label>
+          <p class="hint">STL or OBJ. We will ask how to use it.</p>
+        </div>
+        <div class="card">
+          <h3>Suggestion box</h3>
+          <div class="row"><input type="text" id="idea-text" placeholder="Your idea…" data-speak="Write an idea" /></div>
+          <button id="idea-save" class="pill" data-speak="Save idea">💾 Save idea</button>
+          <p class="hint" id="idea-count"></p>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- Picture timeline -->
+  <div id="timeline" style="background:var(--panel);border-top:3px solid var(--line);padding:6px 10px;">
+    <div style="display:flex;align-items:center;gap:10px">
+      <strong style="font-size:.9em">Your versions</strong>
+      <span class="hint" style="font-size:.8em">Tap a picture to go back. Nothing is deleted.</span>
+    </div>
+    <div id="timeline-strip"></div>
+  </div>
+
+  <!-- The 6 big buttons -->
+  <nav id="toolbar" aria-label="Main tools">
+    <button class="toolbtn" id="tool-shapes" data-tool="shapes" aria-pressed="true" data-speak="Shapes"><span class="ico" aria-hidden="true">🧊</span><span class="lbl">Shapes</span></button>
+    <button class="toolbtn" id="tool-sculpt" data-tool="sculpt" aria-pressed="false" data-speak="Sculpt"><span class="ico" aria-hidden="true">🪄</span><span class="lbl">Sculpt</span></button>
+    <button class="toolbtn" id="tool-move" data-tool="move" aria-pressed="false" data-speak="Move"><span class="ico" aria-hidden="true">✋</span><span class="lbl">Move</span></button>
+    <button class="toolbtn" id="tool-undo" data-speak="Undo"><span class="ico" aria-hidden="true">↩️</span><span class="lbl">Undo</span></button>
+    <button class="toolbtn" id="tool-save" data-speak="Save"><span class="ico" aria-hidden="true">💾</span><span class="lbl">Save</span></button>
+    <button class="toolbtn" id="tool-print" data-speak="Print"><span class="ico" aria-hidden="true">🖨️</span><span class="lbl">Print</span></button>
+  </nav>
+</div>
+
+<!-- Make it clay floating button (shown in Shapes/Move when there are shapes) -->
+<div id="clay-cta" style="position:fixed;left:12px;bottom:210px;display:none;z-index:20">
+  <button class="big-primary" id="btn-makeclay" style="width:auto;padding:14px 20px" data-speak="Make it clay">🪄 Make it clay</button>
+</div>
+
+<!-- Toast -->
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- Where was I? -->
+<div class="overlay" id="resume-overlay">
+  <div class="sheet" style="text-align:center">
+    <h2>Where was I?</h2>
+    <img id="resume-thumb" class="thumb" alt="Your last model" />
+    <p id="resume-line">Here is what you were making.</p>
+    <div class="actions">
+      <button class="big-primary" id="resume-continue" data-speak="Continue">✅ Continue</button>
+      <button id="resume-fresh" data-speak="Start fresh">🆕 Start fresh</button>
+    </div>
+  </div>
+</div>
+
+<!-- Print report -->
+<div class="overlay" id="print-overlay">
+  <div class="sheet">
+    <h2>🖨️ Print check</h2>
+    <div id="print-checks"></div>
+    <div class="actions">
+      <button class="big-primary" id="save-3mf" data-speak="Save 3 M F file">💾 Save 3MF</button>
+      <button id="save-stl" data-speak="Save S T L file">💾 Save STL</button>
+      <button id="print-close" data-speak="Close">✖️ Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bin confirm -->
+<div class="overlay" id="bin-overlay">
+  <div class="sheet" style="text-align:center">
+    <h2>Put it in the bin?</h2>
+    <p id="bin-line">This will remove the shape.</p>
+    <div class="actions">
+      <button class="danger" id="bin-yes" data-speak="Yes, bin it">🗑️ Yes, bin it</button>
+      <button class="big-primary" id="bin-no" data-speak="No, keep it">↩️ No, keep it</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import choice -->
+<div class="overlay" id="import-overlay">
+  <div class="sheet" style="text-align:center">
+    <h2>How should we use this?</h2>
+    <div class="actions" style="flex-direction:column">
+      <button class="big-primary" data-import="solid" data-speak="A solid print">🧱 A solid print</button>
+      <button data-import="negative" data-speak="A hole the shape fits into">🕳️ A hole the shape fits into</button>
+      <button data-import="cancel" data-speak="Cancel">✖️ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
