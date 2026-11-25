@@ -124,7 +124,9 @@ On the print card:
 
 In Chrome or Edge you can pick the folder. In other browsers the file downloads.
 
-Open that file in your printer app (for example Bambu Studio). Clay Blocks does not send it to the printer by itself.
+The file is in millimetres, with Z pointing up. A model that sits on the plate in Clay Blocks sits on the bed in the file. That is the direction Bambu Studio and most other printer apps use.
+
+Open that file in your printer app. Clay Blocks does not send it to the printer by itself.
 
 ## Starter models
 

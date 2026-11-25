@@ -157,7 +157,7 @@ function setTool(tool) {
   currentTool = tool;
   const sceneTool = (tool === 'sculpt') ? 'sculpt' : (tool === 'move') ? 'move' : (tool === 'shapes') ? 'shapes' : 'none';
   scene.setTool(sceneTool);
-  $('#banner').textContent = BANNERS[tool] || 'Clay Blocks';
+  $('#banner-line').textContent = BANNERS[tool] || 'Clay Blocks';
   V.speak(BANNERS[tool], { force: true });
 
   $$('.toolbtn[data-tool]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === tool)));
@@ -264,13 +264,19 @@ function niceName(k) {
 /* ---------------- make clay ---------------- */
 function updateClayCTA() {
   const showCta = !scene.isClay && scene.hasContent && (currentTool === 'shapes' || currentTool === 'move');
-  $('#clay-cta').style.display = showCta ? 'block' : 'none';
+  const cta = $('#clay-cta');
+  const narrow = window.matchMedia('(max-width: 820px)').matches;
+  const panel = $('#panel');
+  if (narrow && cta.parentElement !== panel) panel.prepend(cta);
+  if (!narrow && cta.parentElement === panel) document.body.appendChild(cta);
+  cta.style.display = showCta ? 'block' : 'none';
 }
+window.addEventListener('resize', () => { if (scene) updateClayCTA(); });
 
 function doMakeClay() {
   const res = scene.makeClay();
   if (!res.ok) { toast(res.error); V.speak(res.error, { force: true }); return; }
-  toast('Joined. You can sculpt it now. The print check says what it can see.');
+  toast('Joined. You can sculpt it now.');
   setTool('sculpt');
 }
 

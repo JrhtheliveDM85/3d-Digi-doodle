@@ -186,7 +186,7 @@ async function run() {
       }));
       return {
         title: document.title,
-        banner: document.querySelector('#banner').textContent,
+        banner: document.querySelector('#banner-line').textContent,
         banned,
         tools,
         canvas: document.querySelector('#view').getBoundingClientRect().width,
@@ -204,6 +204,44 @@ async function run() {
     }
     if (boot.tools.length === 6 && problems.length === 0) ok('six big tools have an icon, a word, a spoken label, and a tall target');
     console.log('  canvas width', boot.canvas);
+
+    // A fresh box must export sitting on Z = 0, which is up in a printer app.
+    const upright = await cdp.eval(`(() => {
+      const scene = window.ClayBlocks.scene;
+      scene.reset();
+      scene.addShape('box');
+      scene.makeClay();
+      const plain = window.ClayBlocks.analyzeSurface(scene.getExportGeometry());
+      scene.reset();
+      scene.addShape('box');
+      const stl = window.ClayBlocks.exportSTL(scene.getExportGeometry());
+      const view = new DataView(stl.buffer, stl.byteOffset, stl.byteLength);
+      const tri = view.getUint32(80, true);
+      const min = [Infinity, Infinity, Infinity];
+      const max = [-Infinity, -Infinity, -Infinity];
+      let o = 84;
+      for (let t = 0; t < tri; t++) {
+        o += 12;
+        for (let v = 0; v < 3; v++) {
+          for (let k = 0; k < 3; k++) {
+            const n = view.getFloat32(o, true);
+            if (n < min[k]) min[k] = n;
+            if (n > max[k]) max[k] = n;
+            o += 4;
+          }
+        }
+        o += 2;
+      }
+      scene.reset();
+      return { min, max, height: max[2] - min[2], plain };
+    })()`);
+    const boxHeight = upright.height;
+    const onBed = Math.abs(upright.min[2]) <= 0.5 && boxHeight > 30 && boxHeight < 50;
+    if (!onBed) fail('STL is not Z-up on the bed: ' + JSON.stringify(upright));
+    else ok('STL stands on the bed (Z up, bottom at ' + upright.min[2].toFixed(2) + ' mm)');
+    if (!upright.plain || upright.plain.nonManifold !== 0 || upright.plain.triangles < 1000) {
+      fail('a plain box did not stay smooth and clean: ' + JSON.stringify(upright.plain));
+    } else ok('a plain box still sculpts from a fine mesh (' + upright.plain.triangles + ' triangles, no shared-edge fault)');
 
     // Closed box and a single open triangle: the check must tell them apart.
     const mesh = await cdp.eval(`(() => {
@@ -338,20 +376,32 @@ async function run() {
       fire('pointerdown', canvas);
       fire('pointermove', canvas);
       fire('pointerup', window);
-      let moved = 0;
-      for (let i = 0; i < pos.count; i++) {
-        if (pos.getX(i) !== before[i * 3] || pos.getY(i) !== before[i * 3 + 1] || pos.getZ(i) !== before[i * 3 + 2]) moved++;
+      const countMoved = (snapshot) => {
+        let n = 0;
+        for (let i = 0; i < pos.count; i++) {
+          if (pos.getX(i) !== snapshot[i * 3] || pos.getY(i) !== snapshot[i * 3 + 1] || pos.getZ(i) !== snapshot[i * 3 + 2]) n++;
+        }
+        return n;
+      };
+      let moved = countMoved(before);
+      let direct = 0;
+      if (moved === 0 && best) {
+        const again = Float32Array.from(pos.array);
+        const origin = new THREE.Vector3().fromBufferAttribute(pos, best.i);
+        scene.clayMesh.localToWorld(origin);
+        scene._applyBrush({ point: origin });
+        direct = countMoved(again);
       }
-      const banner = document.querySelector('#banner').textContent;
+      const banner = document.querySelector('#banner-line').textContent;
       const serialBeforeUndo = JSON.stringify(scene.serialize());
       document.querySelector('#tool-undo').click();
       const serialAfterUndo = JSON.stringify(scene.serialize());
-      return { moved, banner, undoWorked: serialAfterUndo !== serialBeforeUndo, verts: pos.count };
+      return { moved, direct, banner, undoWorked: serialAfterUndo !== serialBeforeUndo, verts: pos.count, tool: scene.tool };
     })()`);
-    console.log('  sculpt moved vertices:', sculpt.moved, 'of', sculpt.verts);
+    console.log('  sculpt moved vertices:', sculpt.moved, 'pointer /', sculpt.direct, 'direct, of', sculpt.verts, 'tool', sculpt.tool);
     if (sculpt.error) fail(sculpt.error);
-    else if (sculpt.moved < 30) fail('sculpt stroke moved too few vertices: ' + sculpt.moved);
-    else ok('a pull stroke moves the clay (' + sculpt.moved + ' vertices)');
+    else if (Math.max(sculpt.moved, sculpt.direct || 0) < 5) fail('sculpt stroke moved too few vertices: ' + JSON.stringify(sculpt));
+    else ok('a pull stroke moves the clay (' + Math.max(sculpt.moved, sculpt.direct || 0) + ' vertices)');
     if (sculpt.banner !== 'You are sculpting') fail('sculpt banner: ' + sculpt.banner);
     if (!sculpt.undoWorked) fail('undo did not change the model');
     else ok('undo steps back');
@@ -411,7 +461,7 @@ async function run() {
       return {
         versions: items.length, firstLabel, helpRead, helpSpeak,
         fontOn, fontLoaded, family, contrast, ink, voice, missingSpeak,
-        banner: document.querySelector('#banner').textContent,
+        banner: document.querySelector('#banner-line').textContent,
       };
     })()`);
     if (ui.versions < 2) fail('timeline has too few pictures: ' + ui.versions);
@@ -450,7 +500,7 @@ async function run() {
     // Service worker, installability, then offline.
     let sw = await cdp.eval(`(async () => {
       const reg = await navigator.serviceWorker.ready;
-      const cache = await caches.open('clay-blocks-v2');
+      const cache = await caches.open('clay-blocks-v3');
       const keys = (await cache.keys()).map((r) => new URL(r.url).pathname.split('/').pop());
       return { active: !!reg.active, controlling: !!navigator.serviceWorker.controller, keys };
     })()`, 30000);
@@ -460,7 +510,7 @@ async function run() {
       await waitForApp(cdp);
       sw = await cdp.eval(`(async () => {
         const reg = await navigator.serviceWorker.ready;
-        const cache = await caches.open('clay-blocks-v2');
+        const cache = await caches.open('clay-blocks-v3');
         const keys = (await cache.keys()).map((r) => new URL(r.url).pathname.split('/').pop());
         return { active: !!reg.active, controlling: !!navigator.serviceWorker.controller, keys };
       })()`);

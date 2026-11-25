@@ -13,7 +13,11 @@ The print check in `js/printcheck.js` reports only what the code measures.
 
 **Fix it for me** calls `dropToPlate` or `shrinkToFit` only. Shrink scales the model so the box fits, then sits it on the plate. It writes one history step.
 
+Export turns the Y-up scene into Z-up millimetres before it writes STL or 3MF. The lowest point of a model on the plate is Z = 0. The swap keeps triangle winding (the axis change has determinant +1).
+
 Make it clay uses three-bvh-csg (union, then subtraction). That library does not prove a closed skin. A failed join shows a plain error and leaves the shapes as they were.
+
+The mesh is subdivided after the join so sculpting has more triangles, one step at a time. A step is kept only when it does not add edges shared by more than two faces, and does not add a gap. On a plain box the mesh stays fine (about 3000 triangles, none of those edges). On a box with a round hole the first extra step would add those edges, so that model keeps the joined mesh (about 520 triangles). Before this guard, the same hole had 28 of those edges. Each was shorter than 0.09 mm, about 1.2 mm altogether. The guard stops them being created. It does not repair a skin, and the card still does not promise the skin is closed. The hole also has unpaired edges that lie on the surface (T-junctions). The check does not call those a gap unless the middle of the edge is more than 0.2 mm off the rest of the skin.
 
 ## Shop zip
 

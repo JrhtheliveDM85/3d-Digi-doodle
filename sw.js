@@ -1,7 +1,7 @@
 // sw.js — makes Clay Blocks work offline once it has loaded once.
 // Everything the app needs is in this list. There is no CDN.
 // Bump CACHE when those files change, so an update replaces the old copy.
-const CACHE = 'clay-blocks-v2';
+const CACHE = 'clay-blocks-v3';
 
 const ASSETS = [
   './',

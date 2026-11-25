@@ -31,7 +31,7 @@
     <button id="btn-settings" class="minibtn" data-speak="Settings">⚙️ Settings</button>
   </header>
 
-  <div id="banner" role="status" aria-live="polite">Welcome! Press Shapes to begin.</div>
+  <div id="banner" role="status" aria-live="polite"><span id="banner-line">Welcome! Press Shapes to begin.</span><span id="toast"></span></div>
 
   <main id="stage">
     <div id="canvas-wrap">
@@ -140,10 +140,10 @@
   </main>
 
   <!-- Picture timeline -->
-  <div id="timeline" style="background:var(--panel);border-top:3px solid var(--line);padding:6px 10px;">
-    <div style="display:flex;align-items:center;gap:10px">
-      <strong style="font-size:.9em">Your versions</strong>
-      <span class="hint" style="font-size:.8em">Tap a picture to go back. Nothing is deleted.</span>
+  <div id="timeline">
+    <div id="timeline-label">
+      <strong>Your versions</strong>
+      <span class="hint">Tap a picture to go back. Nothing is deleted.</span>
     </div>
     <div id="timeline-strip"></div>
   </div>
@@ -160,7 +160,7 @@
 </div>
 
 <!-- Make it clay floating button (shown in Shapes/Move when there are shapes) -->
-<div id="clay-cta" style="position:fixed;left:12px;bottom:210px;display:none;z-index:20">
+<div id="clay-cta">
   <button class="big-primary" id="btn-makeclay" style="width:auto;padding:14px 20px" data-speak="Make it clay">🪄 Make it clay</button>
 </div>
 

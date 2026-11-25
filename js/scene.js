@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { mergeVertices, mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 import { Evaluator, Brush, ADDITION, SUBTRACTION } from 'three-bvh-csg';
+import { analyzeSurface } from './printcheck.js';
 
 const PLATE_MM = 256;      // build plate width/depth
 let ID = 1;
@@ -409,7 +410,10 @@ export class Scene {
       let geo = result.geometry;
       geo = geo.index ? geo : mergeVertices(geo);
       geo = mergeVertices(geo);            // weld so brushes move shared verts
-      geo = this._densify(geo);            // add detail for nicer sculpting
+      // Extra triangles make sculpting smoother. Skip that step when it
+      // creates edges shared by more than two faces, or new gaps. Those
+      // tiny edges are not repaired here; they are simply not added.
+      geo = this._densifyIfSafe(geo);
       geo.computeVertexNormals();
       geo.computeBoundingBox();
 
@@ -427,6 +431,21 @@ export class Scene {
     } catch (err) {
       return { ok: false, error: 'Could not join the shapes. Try moving them so they touch or overlap.' };
     }
+  }
+
+  // Add triangles for sculpting, one step at a time. Stop before a step
+  // that makes more edges shared by three faces, or a new gap.
+  _densifyIfSafe(geo) {
+    let current = geo;
+    let skin = analyzeSurface(current);
+    for (let guard = 0; guard < 3 && triCount(current) < 3500; guard++) {
+      const next = mergeVertices(subdivide(current));
+      const nextSkin = analyzeSurface(next);
+      if (nextSkin.nonManifold > skin.nonManifold || nextSkin.gaps > skin.gaps) break;
+      current = next;
+      skin = nextSkin;
+    }
+    return current;
   }
 
   // Split triangles into 4 until we have enough detail to sculpt smoothly.

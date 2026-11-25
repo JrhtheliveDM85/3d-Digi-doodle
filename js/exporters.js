@@ -1,8 +1,15 @@
 // exporters.js — write STL and 3MF in millimetres.
-// Input is a THREE.BufferGeometry whose units are already millimetres
-// (in this app 1 three.js unit = 1 mm).
+// The app scene is Y-up (three.js). Printer apps, and the 3MF spec, are Z-up:
+// X to the right, Y to the back, Z up. A model that sits on the plate keeps
+// its lowest point at Z = 0.
+// (x, y, z) -> (x, -z, y). That matrix has determinant +1, so triangle
+// winding stays the same.
 
 import { zipSync, strToU8 } from 'fflate';
+
+function printerXYZ(x, y, z) {
+  return [x, -z, y];
+}
 
 // Return {positions:Float32Array of triangle verts, count:triangleCount}
 function toTriangles(geometry) {
@@ -18,7 +25,7 @@ export function exportSTL(geometry) {
   const buffer = new ArrayBuffer(84 + triCount * 50);
   const view = new DataView(buffer);
   // 80-byte header
-  const header = 'Clay Blocks STL (mm)';
+  const header = 'Clay Blocks STL mm Z-up';
   for (let i = 0; i < 80; i++) view.setUint8(i, i < header.length ? header.charCodeAt(i) : 0);
   view.setUint32(80, triCount, true);
   let o = 84;
@@ -26,9 +33,9 @@ export function exportSTL(geometry) {
   for (let t = 0; t < triCount; t++) {
     const i = t * 9;
     // normal
-    const x1 = ax[i], y1 = ax[i+1], z1 = ax[i+2];
-    const x2 = ax[i+3], y2 = ax[i+4], z2 = ax[i+5];
-    const x3 = ax[i+6], y3 = ax[i+7], z3 = ax[i+8];
+    const [x1, y1, z1] = printerXYZ(ax[i], ax[i+1], ax[i+2]);
+    const [x2, y2, z2] = printerXYZ(ax[i+3], ax[i+4], ax[i+5]);
+    const [x3, y3, z3] = printerXYZ(ax[i+6], ax[i+7], ax[i+8]);
     const ux = x2-x1, uy = y2-y1, uz = z2-z1;
     const vx = x3-x1, vy = y3-y1, vz = z3-z1;
     let nx = uy*vz - uz*vy, ny = uz*vx - ux*vz, nz = ux*vy - uy*vx;
@@ -36,9 +43,10 @@ export function exportSTL(geometry) {
     nx/=len; ny/=len; nz/=len;
     view.setFloat32(o, nx, true); view.setFloat32(o+4, ny, true); view.setFloat32(o+8, nz, true); o+=12;
     for (let v = 0; v < 3; v++) {
-      view.setFloat32(o, ax[i+v*3], true);
-      view.setFloat32(o+4, ax[i+v*3+1], true);
-      view.setFloat32(o+8, ax[i+v*3+2], true);
+      const [px, py, pz] = printerXYZ(ax[i+v*3], ax[i+v*3+1], ax[i+v*3+2]);
+      view.setFloat32(o, px, true);
+      view.setFloat32(o+4, py, true);
+      view.setFloat32(o+8, pz, true);
       o += 12;
     }
     view.setUint16(o, 0, true); o += 2;
@@ -55,7 +63,8 @@ export function export3MF(geometry) {
 
   let verts = '';
   for (let i = 0; i < pos.count; i++) {
-    verts += `<vertex x="${fmt(pos.getX(i))}" y="${fmt(pos.getY(i))}" z="${fmt(pos.getZ(i))}"/>`;
+    const [x, y, z] = printerXYZ(pos.getX(i), pos.getY(i), pos.getZ(i));
+    verts += `<vertex x="${fmt(x)}" y="${fmt(y)}" z="${fmt(z)}"/>`;
   }
   let tris = '';
   for (let i = 0; i < idx.count; i += 3) {
