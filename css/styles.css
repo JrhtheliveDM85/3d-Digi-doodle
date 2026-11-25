@@ -1,0 +1,290 @@
+/* Clay Blocks — styles
+   Design goals (see NOTES.md): big targets, high contrast, no tiny icons,
+   never rely on colour alone, calm motion, dyslexia-friendly option. */
+
+:root {
+  /* Colours are tokens so a high-contrast theme can override them. */
+  --bg: #f4f1ea;          /* warm paper, easier than pure white */
+  --panel: #ffffff;
+  --ink: #1a1a1a;
+  --ink-soft: #444;
+  --line: #cfc8ba;
+  --accent: #1d4ed8;      /* strong blue */
+  --accent-ink: #ffffff;
+  --good: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --bin: #b91c1c;
+  --focus: #f59e0b;
+  --radius: 16px;
+  --tap: 64px;            /* minimum big-button height */
+  --font: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-size: 20px;
+}
+
+/* Reading font. The files live in fonts/ so this works offline.
+   Atkinson Hyperlegible is the Braille Institute face (SIL Open Font License). */
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("../fonts/AtkinsonHyperlegible-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("../fonts/AtkinsonHyperlegible-Bold.ttf") format("truetype");
+  font-weight: 700 800;
+  font-style: normal;
+  font-display: swap;
+}
+:root[data-font="reading"] {
+  --font: "Atkinson Hyperlegible", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  word-spacing: 0.08em;
+}
+
+/* Extra-high-contrast theme (dark ink on near-white, bolder lines). */
+:root[data-contrast="high"] {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --ink: #000000;
+  --ink-soft: #000000;
+  --line: #000000;
+  --accent: #0000cc;
+  --good: #006400;
+  --warn: #7a3d00;
+  --bad: #a30000;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--font-size);
+  line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Calmer motion for people who find it hard. */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ---------- Layout ---------- */
+#app { display: flex; flex-direction: column; height: 100%; }
+
+header#topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px; background: var(--panel);
+  border-bottom: 3px solid var(--line);
+  flex-wrap: wrap;
+}
+#topbar .brand { font-weight: 800; font-size: 1.15em; display: flex; align-items: center; gap: 8px; }
+#topbar .brand .logo { font-size: 1.4em; }
+#topbar .spacer { flex: 1 1 auto; }
+
+/* The "You are …" banner. Always visible, always says the active tool. */
+#banner {
+  font-weight: 800;
+  font-size: 1.25em;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  text-align: center;
+  border-bottom: 3px solid rgba(0,0,0,.2);
+}
+#banner-line { display: block; }
+
+/* The note sits in the banner, so it never covers a button. */
+#toast {
+  position: static;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  display: none;
+  max-width: 36em;
+  margin: 4px auto 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  font-size: 0.8em;
+  text-align: center;
+  z-index: auto;
+}
+#toast.show { display: block; }
+
+#clay-cta {
+  position: fixed;
+  left: 12px;
+  bottom: 210px;
+  z-index: 20;
+  display: none;
+}
+
+main#stage { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+#canvas-wrap { position: relative; flex: 1 1 auto; min-width: 0; }
+canvas#view { display: block; width: 100%; height: 100%; touch-action: none; }
+
+/* Side panel changes with the active tool. It never moves; only its
+   contents change, so the layout stays predictable. */
+#panel {
+  width: 340px; max-width: 42vw;
+  background: var(--panel);
+  border-left: 3px solid var(--line);
+  overflow-y: auto; padding: 14px;
+}
+.panel-page { display: none; }
+.panel-page.active { display: block; }
+.panel-page h2 { margin: 4px 0 12px; font-size: 1.15em; }
+
+/* ---------- Buttons ---------- */
+button {
+  font-family: inherit; font-size: 1em; color: var(--ink);
+  background: var(--panel); border: 3px solid var(--line);
+  border-radius: var(--radius); cursor: pointer;
+  min-height: var(--tap); padding: 10px 14px;
+}
+button:focus-visible { outline: 5px solid var(--focus); outline-offset: 2px; }
+button:hover { border-color: var(--accent); }
+button[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* The 6 big action buttons across the bottom. */
+#toolbar {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+  padding: 10px; background: var(--panel); border-top: 3px solid var(--line);
+}
+.toolbtn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; min-height: 84px; font-weight: 700;
+}
+.toolbtn .ico { font-size: 1.9em; line-height: 1; }
+.toolbtn .lbl { font-size: .92em; }
+.toolbtn[aria-pressed="true"] {
+  background: var(--accent); color: var(--accent-ink); border-color: #0b2a8a;
+}
+
+/* Secondary (Help / Settings) — clearly smaller than the 6, still big enough. */
+.minibtn { display: inline-flex; align-items: center; gap: 8px; min-height: 52px; font-weight: 700; }
+
+/* Shape palette buttons */
+.shape-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.shape-grid button { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 96px; }
+.shape-grid .ico { font-size: 2.2em; }
+
+/* Cards */
+.card { border: 3px solid var(--line); border-radius: var(--radius); padding: 12px; margin-bottom: 12px; background: var(--panel); }
+.card h3 { margin: 0 0 8px; font-size: 1.05em; }
+.row { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+.row label { min-width: 64px; font-weight: 700; }
+input[type="number"], input[type="text"], input[type="search"] {
+  font-family: inherit; font-size: 1em; padding: 10px; min-height: 52px;
+  border: 3px solid var(--line); border-radius: 12px; width: 100%; color: var(--ink); background: var(--panel);
+}
+input[type="range"] { width: 100%; height: 40px; }
+select { font-family: inherit; font-size: 1em; min-height: 52px; border: 3px solid var(--line); border-radius: 12px; padding: 8px; width: 100%; background: var(--panel); color: var(--ink); }
+
+.pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { min-height: 52px; padding: 8px 14px; }
+.pill[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: #0b2a8a; }
+
+.big-primary { width: 100%; background: var(--accent); color: var(--accent-ink); border-color: #0b2a8a; font-weight: 800; margin-top: 6px; }
+.danger { color: var(--bin); border-color: var(--bin); }
+
+/* ---------- Overlays / modals ---------- */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.5);
+  display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50;
+}
+.overlay.show { display: flex; }
+.sheet {
+  background: var(--panel); border-radius: 20px; border: 3px solid var(--line);
+  padding: 20px; max-width: 640px; width: 100%; max-height: 88vh; overflow-y: auto;
+}
+.sheet h2 { margin-top: 0; }
+.sheet .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.sheet .actions button { flex: 1 1 200px; }
+
+.thumb { width: 100%; max-width: 280px; border-radius: 12px; border: 3px solid var(--line); display: block; margin: 0 auto 12px; background: #fff; }
+
+/* Timeline of picture versions */
+#timeline {
+  background: var(--panel);
+  border-top: 3px solid var(--line);
+  padding: 6px 10px;
+}
+#timeline-label { display: flex; align-items: center; gap: 10px; }
+#timeline-label strong { font-size: .9em; }
+#timeline-strip { display: flex; gap: 10px; overflow-x: auto; padding: 6px 2px; }
+.tl-item { flex: 0 0 auto; border: 3px solid var(--line); border-radius: 12px; padding: 4px; background: var(--panel); cursor: pointer; }
+.tl-item.current { border-color: var(--accent); }
+.tl-item img { display: block; width: 96px; height: 72px; object-fit: cover; border-radius: 8px; }
+.tl-item .cap { font-size: .7em; text-align: center; margin-top: 2px; }
+
+/* Help cards */
+.help-card { position: relative; }
+.help-card .play { position: absolute; top: 10px; right: 10px; min-height: 52px; }
+.help-steps li { margin: 8px 0; }
+.help-pic { font-size: 3em; text-align: center; margin: 6px 0; }
+.branch-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.help-list button { display: block; width: 100%; text-align: left; margin-bottom: 8px; }
+
+/* Print report lines */
+.check { display: flex; align-items: flex-start; gap: 10px; padding: 10px; border: 3px solid var(--line); border-radius: 12px; margin-bottom: 10px; }
+.check .mark { font-size: 1.5em; line-height: 1; }
+.check .msg { flex: 1; }
+.check.ok { border-color: var(--good); }
+.check.no { border-color: var(--bad); }
+.check.warn { border-color: var(--warn); }
+.check.note { border-color: var(--accent); }
+.check .fix { margin-left: auto; }
+
+.file-pick {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 64px; padding: 10px 14px; margin: 8px 0;
+  border: 3px solid var(--line); border-radius: var(--radius);
+  font-weight: 700; cursor: pointer;
+}
+.file-pick input { font: inherit; max-width: 60%; }
+
+
+.hint { color: var(--ink-soft); font-size: .9em; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+
+/* Small screens / phones: panel drops below the canvas, buttons stay big. */
+@media (max-width: 820px) {
+  #app { overflow: hidden; }
+  header#topbar { flex-wrap: nowrap; padding: 6px 8px; }
+  #topbar .brand { font-size: 1em; white-space: nowrap; }
+  .minibtn { min-height: 48px; padding: 6px 8px; font-size: 0.9em; }
+  #banner { font-size: 1.05em; padding: 8px 10px; }
+  main#stage { flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: hidden; }
+  #canvas-wrap { flex: 0 0 110px; min-height: 110px; max-height: 110px; }
+  #panel {
+    width: 100%; max-width: none; flex: 1 1 200px; min-height: 150px;
+    max-height: none; overflow-y: auto;
+    border-left: none; border-top: 3px solid var(--line);
+  }
+  #toolbar { grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 8px; }
+  .toolbtn { min-height: 64px; padding: 6px 4px; }
+  .toolbtn .ico { font-size: 1.45em; }
+  .shape-grid button { min-height: 72px; }
+  #timeline { padding: 2px 8px; }
+  #timeline-label .hint { display: none; }
+  .tl-item img { width: 56px; height: 42px; }
+  :root { --font-size: 18px; }
+  /* Keep Make it clay in the panel, where nothing else can cover it. */
+  #clay-cta {
+    position: static;
+    left: auto;
+    bottom: auto;
+    z-index: auto;
+    padding: 0 0 12px;
+  }
+  #clay-cta .big-primary { width: 100%; }
+}

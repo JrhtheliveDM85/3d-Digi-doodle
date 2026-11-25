@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Clay Blocks">
+  <rect width="512" height="512" rx="96" fill="#1d4ed8"/>
+  <!-- stacked blocks becoming clay -->
+  <g stroke="#0b2a8a" stroke-width="8" stroke-linejoin="round">
+    <rect x="120" y="300" width="150" height="110" rx="16" fill="#4c9be8"/>
+    <rect x="250" y="250" width="150" height="110" rx="16" fill="#63c07a"/>
+    <circle cx="205" cy="220" r="70" fill="#e8a24c"/>
+  </g>
+  <!-- soft clay blob on top -->
+  <path d="M300 170 q40 -60 90 -20 q40 40 -10 70 q-60 30 -90 -10 q-20 -25 10 -40 z" fill="#d9c3a5" stroke="#8a744f" stroke-width="8"/>
+</svg>
